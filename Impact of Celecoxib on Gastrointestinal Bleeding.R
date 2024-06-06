@@ -1,188 +1,132 @@
-###### STEP 1- import the data ##############
-EP748_laboriginal  <- "C:/Users/Bobie/Desktop/SPH Fall 2023/EP 748/EP748_lab.csv"
+ Define the file path and read the CSV file
+EP748_laboriginal <- "C:/Users/Bobie/Desktop/SPH Fall 2023/EP 748/EP748_lab.csv"
 data1 <- read.csv(EP748_laboriginal)
 head(data1)
-###### STEP 2- examine the data #############
+###### STEP 2 - Examine the data #############
 View(data1)
 
-
-install.packages("tableone")
+# Install and load necessary packages
+if (!require("tableone")) install.packages("tableone")
 library(tableone)
 
-CreateTableOne(data=data1)  
-View(data1)  
-# more informative names 
+# Create the initial table
+CreateTableOne(data = data1)
+View(data1)
 
+# Rename columns for better readability
+colnames(data1) <- c('ID', 'Celecoxib', 'Male', 'Age', 'GI_bleed_history', 
+                     'Current_GI_protective_agent_use', 'Warfarin', 'Number_of_medications_used', 
+                     'Peptic_ulcer_history', 'Osteoarthritis', 'Rheumatoid_arthritis', 
+                     'Past_GI_protective_agent_use', 'Hospitalization_history', 'COPD', 
+                     'Steroid_use', 'GI_bleeding', 'survt')
 
-names(data1)[2] <- 'Celecoxib'
-names(data1)[3] <- 'Male'
-names(data1)[4] <- 'Age'
-names(data1)[5] <-'GI bleed history'
-names(data1)[6] <-'Current GI protective agent use'
-names(data1)[7] <-'Warfarin'
-names(data1)[8] <-'Number of medications used'
-names(data1)[9] <-'Peptic ulcer history'
-names(data1)[10] <-'Osteoarthritis'
-names(data1)[11] <-'Rheumatoid arthritis'
-names(data1)[12] <-'Past GI protective agent use'
-names(data1)[13] <-'Hospitalization history'
-names(data1)[14] <-'COPD'
-names(data1)[15] <-'Steroid use'
-names(data1)[16] <-'GI bleeding'
+# Vector of variables to summarize
+allVars <- c('Celecoxib', 'Male', 'Age', 'GI_bleed_history', 
+             'Current_GI_protective_agent_use', 'Warfarin', 'Number_of_medications_used', 
+             'Peptic_ulcer_history', 'Osteoarthritis', 'Rheumatoid_arthritis', 
+             'Past_GI_protective_agent_use', 'Hospitalization_history', 'COPD', 
+             'Steroid_use')
 
-## Get variables names to separate out continuous from categorical
-dput(names(data1))
+# Vector of categorical variables that need transformation
+catVars <- c('Celecoxib', 'Male', 'GI_bleed_history', 'Current_GI_protective_agent_use', 
+             'Warfarin', 'Peptic_ulcer_history', 'Osteoarthritis', 'Rheumatoid_arthritis', 
+             'Past_GI_protective_agent_use', 'Hospitalization_history', 'COPD', 'Steroid_use')
 
-## Vector of variables to summarize
-allVars <- c("Celecoxib", "Male", "Age", "GI bleed history", "Current GI protective agent use", 
-             "Warfarin", "Number of medications used", "Peptic ulcer history", 
-             "Osteoarthritis", "Rheumatoid arthritis", "Past GI protective agent use", 
-             "Hospitalization history", "COPD", "Steroid use")
+# Create tables - overall cohort and by treatment status
+Cohort1_table1 <- CreateTableOne(vars = allVars, data = data1, factorVars = catVars)
+Treatments_table1 <- CreateTableOne(vars = allVars, strata = 'Celecoxib', data = data1, factorVars = catVars)
 
+# Print and save tables as CSV files
+write.csv(print(Cohort1_table1), file = "Table 1 cohort.csv")
+write.csv(print(Treatments_table1), file = "Table 1 by treatment.csv")
 
-## Vector of categorical variables that need transformation
-catVars <-  c("Celecoxib", "Male", "GI bleed history", "Current GI protective agent use", 
-              "Warfarin", "Peptic ulcer history", 
-              "Osteoarthritis", "Rheumatoid arthritis", "Past GI protective agent use", 
-              "Hospitalization history", "COPD", "Steroid use")
+write.csv(data1, file = "Testcoxinsas.csv")
 
+###### STEP 3 - Crude measures between treatment and outcome, not accounting for any confounding #############
 
-## Create table- overall cohort 
-Cohort1_table1 <- CreateTableOne(vars=allVars, data=data1, factorVars = catVars)
-Treatments_table1 <- CreateTableOne(vars=allVars, strata='Celecoxib', data=data1, factorVars = catVars)
-
-## Create table- by treatment status
-table_Cohort1_table1 <- print(Cohort1_table1)
-table_Treatments_table1 <- print(Treatments_table1)  
-
-## save both the tables as csv files
-write.csv(table_Cohort1_table1 , file = "Table 1 cohort.csv")
-write.csv(table_Treatments_table1, file = "Table 1 by treatment.csv")  
-
-write.csv(data1,file ="Testcoxinsas.csv")
-
-###### STEP 3- Crude measures between treatment and outcome, not accounting for any confounding #############
-install.packages("epiDisplay")
+# Install and load epiDisplay package
+if (!require("epiDisplay")) install.packages("epiDisplay")
 library(epiDisplay)
 
-## incidence rates stratified by treatment groups
-
-events <- rowsum(data1$`GI bleeding`, data1$Celecoxib)
-pyears <- rowsum((data1$survt)/365, data1$Celecoxib)
-ci.poisson(events, pyears, alpha=.05)
-
+# Incidence rates stratified by treatment groups
+events <- rowsum(data1$GI_bleeding, data1$Celecoxib)
+pyears <- rowsum(data1$survt / 365, data1$Celecoxib)
+ci.poisson(events, pyears, alpha = .05)
 View(events)
-## unadjusted hazard ratio using Cox proportional hazards model 
 
-
-install.packages("survival")
+# Unadjusted hazard ratio using Cox proportional hazards model
+if (!require("survival")) install.packages("survival")
 library(survival)
 
-unadj_model <- coxph(Surv(data1$survt, data1$`GI bleeding`) ~ data1$Celecoxib, method = "breslow") 
+unadj_model <- coxph(Surv(data1$survt, data1$GI_bleeding) ~ data1$Celecoxib, method = "breslow")
 summary(unadj_model)
 
-adj_model <- coxph(Surv(data1$survt, data1$`GI bleeding`) ~ data1$Celecoxib + data1$Male + data1$Age +
-                     data1$`GI bleed history` + data1$`Current GI protective agent use` +
-                     data1$Warfarin + data1$`Number of medications used`, method = "breslow")  
+adj_model <- coxph(Surv(data1$survt, data1$GI_bleeding) ~ data1$Celecoxib + data1$Male + data1$Age +
+                     data1$GI_bleed_history + data1$Current_GI_protective_agent_use +
+                     data1$Warfarin + data1$Number_of_medications_used, method = "breslow")
 summary(adj_model)
 
-###### Confounding adjustment approach 2- Propensity score matching #############
+###### Confounding adjustment approach 2 - Propensity score matching #############
 
-## PSM diagnostic 1- PS overlap
-install.packages("ggplot2")
+# Install and load ggplot2 and MatchIt packages
+if (!require("ggplot2")) install.packages("ggplot2")
 library(ggplot2)
 
-# calculate PS in the sample before matching
-
-psmodel <- glm(data1$Celecoxib ~ data1$Male + data1$Age +
-  data1$`GI bleed history` + data1$`Current GI protective agent use` +
-                 data1$Warfarin + data1$`Number of medications used`, family = "binomial", data=data1)
-data1$prop.scores <- psmodel[["fitted.values"]]
-
-# plot overlap before matching
-
-cbPalette <- c("blue", "pink")
-ggplot(data1, aes(x=prop.scores, fill = factor(Celecoxib), y=after_stat(scaled)))+
-  geom_density(alpha = 0.6)+
-  scale_x_continuous("Propensity score", limits=c(0,1)) +
-  scale_fill_manual(name="Treatment", values=cbPalette, breaks = c("0", "1"),
-                    labels = c("Celecoxib", "NSAID"))+
-  scale_y_continuous("Scaled density") +
-  theme(axis.title.x = element_text(size = 12, vjust = 1))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
-  theme(legend.justification=c(1,1), legend.position=c(1,1))+
-  theme(legend.key = element_rect(colour = NA))+ ggtitle("before PS matching")+
-  theme(plot.title = element_text(hjust = 0.5, face="bold", size=15))
-
-install.packages("MatchIt")
+if (!require("MatchIt")) install.packages("MatchIt")
 library(MatchIt)
 
-m.out <- matchit( data1$Celecoxib ~ data1$Male + data1$Age +
-                    data1$`GI bleed history` + data1$`Current GI protective agent use` +
-                    data1$Warfarin + data1$`Number of medications used`, data=data1,
-                  method="nearest",
-                  caliper=0.025,
-                  replace=FALSE)
+# Calculate PS in the sample before matching
+psmodel <- glm(Celecoxib ~ Male + Age + GI_bleed_history + Current_GI_protective_agent_use + 
+                 Warfarin + Number_of_medications_used, family = "binomial", data = data1)
+data1$prop_scores <- psmodel$fitted.values
 
-matched <- match.data(m.out) 
+# Plot overlap before matching
+cbPalette <- c("blue", "pink")
+ggplot(data1, aes(x = prop_scores, fill = factor(Celecoxib), y = after_stat(scaled))) +
+  geom_density(alpha = 0.6) +
+  scale_x_continuous("Propensity score", limits = c(0, 1)) +
+  scale_fill_manual(name = "Treatment", values = cbPalette, breaks = c("0", "1"), labels = c("Celecoxib", "NSAID")) +
+  scale_y_continuous("Scaled density") +
+  theme(axis.title.x = element_text(size = 12, vjust = 1)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
+  theme(legend.justification = c(1, 1), legend.position = c(1, 1)) +
+  theme(legend.key = element_rect(colour = NA)) +
+  ggtitle("Before PS matching") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 15))
+
+# Perform matching
+m.out <- matchit(Celecoxib ~ Male + Age + GI_bleed_history + Current_GI_protective_agent_use + 
+                   Warfarin + Number_of_medications_used, data = data1, method = "nearest", caliper = 0.025, replace = FALSE)
+
+matched <- match.data(m.out)
 View(matched)
 
-# plot overlap after matching
-
-ggplot(matched, aes(x=distance, fill = factor(Celecoxib), y=..scaled..))+
-  geom_density(alpha = 0.6)+
-  scale_x_continuous("Propensity score", limits=c(0,1)) +
-  scale_fill_manual(name="Treatment", values=cbPalette, breaks = c("0", "1"),
-                    labels = c("Celecoxib", "NSAID"))+
+# Plot overlap after matching
+ggplot(matched, aes(x = distance, fill = factor(Celecoxib), y = ..scaled..)) +
+  geom_density(alpha = 0.6) +
+  scale_x_continuous("Propensity score", limits = c(0, 1)) +
+  scale_fill_manual(name = "Treatment", values = cbPalette, breaks = c("0", "1"), labels = c("Celecoxib", "NSAID")) +
   scale_y_continuous("Scaled density") +
-  theme(axis.title.x = element_text(size = 12, vjust = 1))+
+  theme(axis.title.x = element_text(size = 12, vjust = 1)) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
-  theme(legend.justification=c(1,1), legend.position=c(1,1))+
-  theme(legend.key = element_rect(colour = NA))+ ggtitle("After PS matching")+
-  theme(plot.title = element_text(hjust = 0.5, face="bold", size=15))
+  theme(legend.justification = c(1, 1), legend.position = c(1, 1)) +
+  theme(legend.key = element_rect(colour = NA)) +
+  ggtitle("After PS matching") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 15))
 
-
-## PSM diagnostic 2- table of patient characteristics by treatment in the matched sample
-
-library(tableone)
-
-## Vector of variables to summarize
-allVars <- c("Male", "Age", "GI bleed history", "Current GI protective agent use",
-             "Warfarin", "Number of medications used", "Peptic ulcer history",
-             "Osteoarthritis", "Rheumatoid arthritis", "Past GI protective agent use",
-             "Hospitalization history", "COPD", "Steroid use")
-
-## Vector of categorical variables that need transformation
-catVars <-  c("Male", "GI bleed history", "Current GI protective agent use",
-              "Warfarin", "Peptic ulcer history",
-              "Osteoarthritis", "Rheumatoid arthritis", "Past GI protective agent use",
-              "Hospitalization history", "COPD", "Steroid use")
-
-
+# PSM diagnostic 2 - Table of patient characteristics by treatment in the matched sample
 matched_treatments_t1 <- CreateTableOne(vars = allVars, strata = 'Celecoxib', data = matched, factorVars = catVars)
+write.csv(print(matched_treatments_t1), file = "Table 1 PS matched.csv")
 
-table_matched_treatments_t1 <- print(matched_treatments_t1)
-
-write.csv(table_matched_treatments_t1, file = "Table 1 PS matched.csv")
-
-#analysis in the matched sample
-
-PSM_model <- coxph(Surv(matched$survt, matched$`GI bleeding`)  ~ matched$Celecoxib, method = "breslow")  
+# Analysis in the matched sample
+PSM_model <- coxph(Surv(matched$survt, matched$GI_bleeding) ~ matched$Celecoxib, method = "breslow")
 summary(PSM_model)
 
-###### Confounding adjustment approach 3- Propensity score weighting #############
+###### Confounding adjustment approach 3 - Propensity score weighting #############
 
-data1$psw <- ifelse(data1$Celecoxib==1, 1/data1$prop.scores, 1/(1-data1$prop.scores))
+data1$psw <- ifelse(data1$Celecoxib == 1, 1 / data1$prop_scores, 1 / (1 - data1$prop_scores))
 View(data1)
-#analysis in incorporating the IP weights
 
-PSW_model <- coxph(Surv(data1$survt, data1$`GI bleeding`)  ~ data1$Celecoxib, weight= data1$psw, robust=TRUE, method = "breslow")  
+# Analysis incorporating the IP weights
+PSW_model <- coxph(Surv(data1$survt, data1$GI_bleeding) ~ data1$Celecoxib, weights = data1$psw, robust = TRUE, method = "breslow")
 summary(PSW_model)
-
-
-
-
-
-
-
-
